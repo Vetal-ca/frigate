@@ -135,6 +135,26 @@ service:
   ## Set the externalTrafficPolicy in the Service to either Cluster or Local
   # externalTrafficPolicy: Cluster
 
+# Separate streaming service.
+# Since, API (Port 5000) can be exposed via shared, cluster-wide Ingress controller, we need a separate service with different IP to expose these
+streamingService:
+  type: ClusterIP
+  annotations: { }
+  labels: { }
+
+  rtmp:
+    enabled: false
+    # External port
+    port: 1935
+
+  rtsp:
+    enabled: false
+    port: 8554
+
+  webRtc:
+    enabled: false
+    port: 8555
+
 ingress:
   # -- Enables the use of an Ingress Controller to front the Service and can provide HTTPS
   enabled: false
