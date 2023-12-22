@@ -1,61 +1,71 @@
+{{- if or .Values.streamingService.webRtc.enabled  .Values.streamingService.rtmp.enabled .Values.streamingService.rtsp.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
   name: "{{ template "frigate.fullname" . }}-streaming"
   labels:
 {{ include "frigate.labels" . | indent 4 }}
-{{- if .Values.service.labels }}
+{{- if .Values.streamingService.labels }}
 {{ toYaml .Values.service.labels | indent 4 }}
 {{- end }}
-{{- with .Values.service.annotations }}
+{{- with .Values.streamingService.annotations }}
   annotations:
 {{ toYaml . | indent 4 }}
 {{- end }}
 spec:
-{{- if (or (eq .Values.service.type "ClusterIP") (empty .Values.service.type)) }}
+{{- if (or (eq .Values.streamingService.type "ClusterIP") (empty .Values.streamingService.type)) }}
   type: ClusterIP
-  {{- if .Values.service.clusterIP }}
-  clusterIP: {{ .Values.service.clusterIP }}
+  {{- if .Values.streamingService.clusterIP }}
+  clusterIP: {{ .Values.streamingService.clusterIP }}
   {{end}}
-{{- else if eq .Values.service.type "LoadBalancer" }}
-  type: {{ .Values.service.type }}
-  {{- if .Values.service.loadBalancerIP }}
-  loadBalancerIP: {{ .Values.service.loadBalancerIP }}
+{{- else if eq .Values.streamingService.type "LoadBalancer" }}
+  type: {{ .Values.streamingService.type }}
+  {{- if .Values.streamingService.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.streamingService.loadBalancerIP }}
   {{- end }}
-  {{- if .Values.service.loadBalancerSourceRanges }}
+  {{- if .Values.streamingService.loadBalancerSourceRanges }}
   loadBalancerSourceRanges:
-{{ toYaml .Values.service.loadBalancerSourceRanges | indent 4 }}
+{{ toYaml .Values.streamingService.loadBalancerSourceRanges | indent 4 }}
   {{- end -}}
 {{- else }}
-  type: {{ .Values.service.type }}
+  type: {{ .Values.streamingService.type }}
 {{- end }}
-{{- if .Values.service.externalIPs }}
+{{- if .Values.streamingService.externalIPs }}
   externalIPs:
-{{ toYaml .Values.service.externalIPs | indent 4 }}
+{{ toYaml .Values.streamingService.externalIPs | indent 4 }}
 {{- end }}
-  {{- if .Values.service.externalTrafficPolicy }}
-  externalTrafficPolicy: {{ .Values.service.externalTrafficPolicy }}
+  {{- if .Values.streamingService.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ .Values.streamingService.externalTrafficPolicy }}
   {{- end }}
   ports:
-    - name: http
-      port: {{ .Values.service.port }}
-      protocol: TCP
-      targetPort: http
-{{ if (and (eq .Values.service.type "NodePort") (not (empty .Values.service.nodePort))) }}
-      nodePort: {{.Values.service.nodePort}}
-{{ end }}
+{{- if .Values.streamingService.rtmp.enabled }}
     - name: rtmp
-      port: 1935
+      port: {{ .Values.streamingService.rtmp.port }}
       protocol: TCP
       targetPort: rtmp
+{{- end }}
 {{ if (and (eq .Values.service.type "NodePort") (not (empty .Values.service.nodePort))) }}
       nodePort: {{.Values.service.nodePort}}
 {{ end }}
+{{- if .Values.streamingService.rtsp.enabled }}
     - name: rtsp
-      port: 8554
+      port: {{ .Values.streamingService.rtsp.port }}
       protocol: TCP
       targetPort: rtsp
       {{/* TODO: think of making the nodePort ability available, the rtmp solution from above would not work as you can't use the same port multiple times */}}
+{{- end }}
+{{- if .Values.streamingService.webRtc.enabled }}
+    - name: webrtc-udp
+      port: {{ .Values.streamingService.webRtc.port }}
+      protocol: UDP
+      targetPort: webrtc-udp
+    - name: webrtc-tcp
+      port: {{ .Values.streamingService.webRtc.port }}
+      protocol: TCP
+      targetPort: webrtc-tcp
+{{- end }}
   selector:
     app.kubernetes.io/name: {{ include "frigate.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
+
+{{- end }}

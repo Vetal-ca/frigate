@@ -138,7 +138,7 @@ service:
 # Separate streaming service.
 # Since, API (Port 5000) can be exposed via shared, cluster-wide Ingress controller, we need a separate service with different IP to expose these
 streamingService:
-  type: ClusterIP
+  type: LoadBalancer
   annotations: { }
   labels: { }
 
@@ -154,6 +154,9 @@ streamingService:
   webRtc:
     enabled: false
     port: 8555
+
+
+dnsConfig: {}
 
 ingress:
   # -- Enables the use of an Ingress Controller to front the Service and can provide HTTPS

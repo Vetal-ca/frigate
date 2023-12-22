@@ -44,18 +44,32 @@ spec:
 {{ if (and (eq .Values.service.type "NodePort") (not (empty .Values.service.nodePort))) }}
       nodePort: {{.Values.service.nodePort}}
 {{ end }}
+{{- if not .Values.streamingService.rtmp.enabled }}
     - name: rtmp
       port: 1935
       protocol: TCP
       targetPort: rtmp
+{{- end }}
 {{ if (and (eq .Values.service.type "NodePort") (not (empty .Values.service.nodePort))) }}
       nodePort: {{.Values.service.nodePort}}
 {{ end }}
+{{- if not .Values.streamingService.rtsp.enabled }}
     - name: rtsp
       port: 8554
       protocol: TCP
       targetPort: rtsp
       {{/* TODO: think of making the nodePort ability available, the rtmp solution from above would not work as you can't use the same port multiple times */}}
+{{- end }}
+{{- if not .Values.streamingService.webRtc.enabled }}
+    - name: webrtc-udp
+      port: 8555
+      protocol: UDP
+      targetPort: webrtc-udp
+    - name: webrtc-tcp
+      port: 8555
+      protocol: TCP
+      targetPort: webrtc-tcp
+{{- end }}
   selector:
     app.kubernetes.io/name: {{ include "frigate.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
