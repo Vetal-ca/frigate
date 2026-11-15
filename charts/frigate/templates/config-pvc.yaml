@@ -1,0 +1,19 @@
+{{- if not .Values.configStorage.existingClaim }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "frigate.fullname" . }}-config
+  labels:
+{{ include "frigate.labels" . | indent 4 }}
+  annotations:
+    # Keep model cache and backups across uninstall/reinstall
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: ["ReadWriteOnce"]
+  {{- if .Values.configStorage.storageClassName }}
+  storageClassName: {{ .Values.configStorage.storageClassName }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.configStorage.size }}
+{{- end }}

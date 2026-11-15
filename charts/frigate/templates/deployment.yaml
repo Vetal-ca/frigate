@@ -33,6 +33,17 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
     {{- end }}
+      initContainers:
+        # Git-managed config.yml into the writable /config volume
+        - name: copy-config
+          image: "{{ .Values.image.repository }}:{{ include "frigate.imageTag" . }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["sh", "-c", "cp /config-src/config.yml /config/config.yml"]
+          volumeMounts:
+            - name: config-src
+              mountPath: /config-src
+            - name: config
+              mountPath: /config
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ include "frigate.imageTag" . }}"
@@ -47,17 +58,18 @@ spec:
             - name: http
               containerPort: 5000
               protocol: TCP
-            - name: rtmp
-              containerPort: 1935
+            - name: http-auth
+              containerPort: 8971
               protocol: TCP
             - name: rtsp
               containerPort: 8554
               protocol: TCP
+            # go2rtc WebRTC listens on 8555 (was wrongly 8554 before chart 8.0.0)
             - name: webrtc-tcp
-              containerPort: 8554
+              containerPort: 8555
               protocol: TCP
             - name: webrtc-udp
-              containerPort: 8554
+              containerPort: 8555
               protocol: UDP
           {{- if .Values.probes.liveness.enabled }}
           livenessProbe:
@@ -127,9 +139,12 @@ spec:
       {{ toYaml . | nindent 8 }}
       {{- end }}
       volumes:
-        - name: config
+        - name: config-src
           configMap:
             name: {{ template "frigate.fullname" . }}
+        - name: config
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-config" (include "frigate.fullname" .)) .Values.configStorage.existingClaim }}
         {{- if .Values.coral.enabled }}
         - name: coral-dev
           hostPath:

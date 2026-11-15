@@ -1,4 +1,4 @@
-{{- if or .Values.streamingService.webRtc.enabled  .Values.streamingService.rtmp.enabled .Values.streamingService.rtsp.enabled }}
+{{- if or .Values.streamingService.webRtc.enabled .Values.streamingService.rtsp.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -38,12 +38,6 @@ spec:
   externalTrafficPolicy: {{ .Values.streamingService.externalTrafficPolicy }}
   {{- end }}
   ports:
-{{- if .Values.streamingService.rtmp.enabled }}
-    - name: rtmp
-      port: {{ .Values.streamingService.rtmp.port }}
-      protocol: TCP
-      targetPort: rtmp
-{{- end }}
 {{ if (and (eq .Values.service.type "NodePort") (not (empty .Values.service.nodePort))) }}
       nodePort: {{.Values.service.nodePort}}
 {{ end }}
@@ -58,11 +52,13 @@ spec:
     - name: webrtc-udp
       port: {{ .Values.streamingService.webRtc.port }}
       protocol: UDP
-      targetPort: webrtc-udp
+      # Numeric: Kubernetes merges containerPorts by number, so the UDP
+      # declaration next to TCP 8555 is dropped and a named target never resolves.
+      targetPort: 8555
     - name: webrtc-tcp
       port: {{ .Values.streamingService.webRtc.port }}
       protocol: TCP
-      targetPort: webrtc-tcp
+      targetPort: 8555
 {{- end }}
   selector:
     app.kubernetes.io/name: {{ include "frigate.name" . }}
