@@ -9,9 +9,20 @@ image:
   # -- Docker registry/repository to pull the image from
   repository: ghcr.io/blakeblackshear/frigate
   # -- Overrides the default tag (appVersion) used in Chart.yaml ([Docker Hub](https://hub.docker.com/r/blakeblackshear/frigate/tags?page=1))
-  tag: 0.12.0
+  tag: 0.18.2
   # -- Docker image pull policy
   pullPolicy: IfNotPresent
+
+# Writable /config (0.14+ writes model cache, backups, migrated config there).
+# config.yml is copied from the ConfigMap on every start, so Git stays the source
+# of truth and UI config edits do not survive a restart.
+configStorage:
+  # -- PVC size for /config
+  size: 1Gi
+  # -- StorageClass for the /config PVC (empty: cluster default)
+  storageClassName: ""
+  # -- Use an existing PVC instead of creating one
+  existingClaim: ""
 
 # -- Docker image pull policy
 imagePullSecrets: []
@@ -115,8 +126,10 @@ probes:
 service:
   # -- Type of Service to use
   type: ClusterIP
-  # -- Port the Service should communicate on
+  # -- Port the Service should communicate on (5000: internal, no auth)
   port: 5000
+  # -- Authenticated UI/API port (Frigate 0.14+). Plain HTTP when Frigate tls.enabled is false.
+  authPort: 8971
   ## Specify the nodePort value for the LoadBalancer and NodePort service types.
   ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport
   ##
@@ -134,6 +147,24 @@ service:
   # loadBalancerSourceRanges: []
   ## Set the externalTrafficPolicy in the Service to either Cluster or Local
   # externalTrafficPolicy: Cluster
+
+# Separate streaming service.
+# Since, API (Port 5000) can be exposed via shared, cluster-wide Ingress controller, we need a separate service with different IP to expose these
+streamingService:
+  type: LoadBalancer
+  annotations: { }
+  labels: { }
+
+  rtsp:
+    enabled: false
+    port: 8554
+
+  webRtc:
+    enabled: false
+    port: 8555
+
+
+dnsConfig: {}
 
 ingress:
   # -- Enables the use of an Ingress Controller to front the Service and can provide HTTPS
@@ -159,33 +190,6 @@ ingress:
   #  - secretName: chart-example-tls
   #    hosts:
   #      - chart-example.local
-
-persistence:
-  data:
-    # -- Enables persistence for the data directory
-    enabled: false
-    ## frigate data Persistent Volume Storage Class
-    ## If defined, storageClassName: <storageClass>
-    ## If set to "-", storageClassName: "", which disables dynamic provisioning
-    ## If undefined (the default) or set to null, no storageClassName spec is
-    ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
-    ##   GKE, AWS & OpenStack)
-    ##
-    # storageClass: "-"
-    ##
-    ## If you want to reuse an existing claim, you can pass the name of the PVC using
-    ## the existingClaim variable
-    # existingClaim: your-claim
-    # subPath: some-subpath
-
-    # -- [access mode](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes) to use for the PVC
-    accessMode: ReadWriteOnce
-
-    # -- size/capacity of the PVC
-    size: 10Gi
-
-    # -- Do not delete the pvc upon helm uninstall
-    skipuninstall: false
 
 # -- Set resource limits/requests for the Pod(s)
 resources: {}

@@ -1,0 +1,67 @@
+{{- if or .Values.streamingService.webRtc.enabled .Values.streamingService.rtsp.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ template "frigate.fullname" . }}-streaming"
+  labels:
+{{ include "frigate.labels" . | indent 4 }}
+{{- if .Values.streamingService.labels }}
+{{ toYaml .Values.service.labels | indent 4 }}
+{{- end }}
+{{- with .Values.streamingService.annotations }}
+  annotations:
+{{ toYaml . | indent 4 }}
+{{- end }}
+spec:
+{{- if (or (eq .Values.streamingService.type "ClusterIP") (empty .Values.streamingService.type)) }}
+  type: ClusterIP
+  {{- if .Values.streamingService.clusterIP }}
+  clusterIP: {{ .Values.streamingService.clusterIP }}
+  {{end}}
+{{- else if eq .Values.streamingService.type "LoadBalancer" }}
+  type: {{ .Values.streamingService.type }}
+  {{- if .Values.streamingService.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.streamingService.loadBalancerIP }}
+  {{- end }}
+  {{- if .Values.streamingService.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+{{ toYaml .Values.streamingService.loadBalancerSourceRanges | indent 4 }}
+  {{- end -}}
+{{- else }}
+  type: {{ .Values.streamingService.type }}
+{{- end }}
+{{- if .Values.streamingService.externalIPs }}
+  externalIPs:
+{{ toYaml .Values.streamingService.externalIPs | indent 4 }}
+{{- end }}
+  {{- if .Values.streamingService.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ .Values.streamingService.externalTrafficPolicy }}
+  {{- end }}
+  ports:
+{{ if (and (eq .Values.service.type "NodePort") (not (empty .Values.service.nodePort))) }}
+      nodePort: {{.Values.service.nodePort}}
+{{ end }}
+{{- if .Values.streamingService.rtsp.enabled }}
+    - name: rtsp
+      port: {{ .Values.streamingService.rtsp.port }}
+      protocol: TCP
+      targetPort: rtsp
+      {{/* TODO: think of making the nodePort ability available, the rtmp solution from above would not work as you can't use the same port multiple times */}}
+{{- end }}
+{{- if .Values.streamingService.webRtc.enabled }}
+    - name: webrtc-udp
+      port: {{ .Values.streamingService.webRtc.port }}
+      protocol: UDP
+      # Numeric: Kubernetes merges containerPorts by number, so the UDP
+      # declaration next to TCP 8555 is dropped and a named target never resolves.
+      targetPort: 8555
+    - name: webrtc-tcp
+      port: {{ .Values.streamingService.webRtc.port }}
+      protocol: TCP
+      targetPort: 8555
+{{- end }}
+  selector:
+    app.kubernetes.io/name: {{ include "frigate.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+
+{{- end }}

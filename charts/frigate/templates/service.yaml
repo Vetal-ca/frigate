@@ -41,21 +41,35 @@ spec:
       port: {{ .Values.service.port }}
       protocol: TCP
       targetPort: http
-{{ if (and (eq .Values.service.type "NodePort") (not (empty .Values.service.nodePort))) }}
-      nodePort: {{.Values.service.nodePort}}
-{{ end }}
-    - name: rtmp
-      port: 1935
+    - name: http-auth
+      port: {{ .Values.service.authPort }}
       protocol: TCP
-      targetPort: rtmp
+      targetPort: http-auth
 {{ if (and (eq .Values.service.type "NodePort") (not (empty .Values.service.nodePort))) }}
       nodePort: {{.Values.service.nodePort}}
 {{ end }}
+{{ if (and (eq .Values.service.type "NodePort") (not (empty .Values.service.nodePort))) }}
+      nodePort: {{.Values.service.nodePort}}
+{{ end }}
+{{- if not .Values.streamingService.rtsp.enabled }}
     - name: rtsp
       port: 8554
       protocol: TCP
       targetPort: rtsp
       {{/* TODO: think of making the nodePort ability available, the rtmp solution from above would not work as you can't use the same port multiple times */}}
+{{- end }}
+{{- if not .Values.streamingService.webRtc.enabled }}
+    - name: webrtc-udp
+      port: 8555
+      protocol: UDP
+      # Numeric: Kubernetes merges containerPorts by number, so the UDP
+      # declaration next to TCP 8555 is dropped and a named target never resolves.
+      targetPort: 8555
+    - name: webrtc-tcp
+      port: 8555
+      protocol: TCP
+      targetPort: 8555
+{{- end }}
   selector:
     app.kubernetes.io/name: {{ include "frigate.name" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
